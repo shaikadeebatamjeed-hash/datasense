@@ -42,16 +42,18 @@ class DatasetBundle:
     task_type: str
 
 
-def _load_sklearn_dataset(loader_function, name: str, task_type: str) -> DatasetBundle:
+def _load_sklearn_dataset(
+    loader_function, name: str, task_type: str, target_column: str = "target"
+) -> DatasetBundle:
     """
     Shared helper: converts any scikit-learn toy dataset loader into our
     standardized DatasetBundle format.
 
-    Every scikit-learn loader (load_iris, load_wine, etc.) follows the same
-    interface when called with as_frame=True — it returns a Bunch object
-    with a `.frame` attribute already containing features + target combined.
-    This helper exploits that consistency so we don't repeat the same
-    conversion logic five times.
+    Most scikit-learn loaders (load_iris, load_wine, etc.) name their target
+    column "target" when called with as_frame=True - but this isn't
+    universal (e.g., fetch_california_housing uses "MedHouseVal" instead).
+    We accept target_column as a parameter, defaulting to "target" for the
+    common case, so each dataset spec can override it when needed.
     """
     raw_data = loader_function(as_frame=True)
     dataframe = raw_data.frame
@@ -59,7 +61,7 @@ def _load_sklearn_dataset(loader_function, name: str, task_type: str) -> Dataset
     return DatasetBundle(
         name=name,
         dataframe=dataframe,
-        target_column="target",  # sklearn's as_frame=True always names it this
+        target_column=target_column,
         task_type=task_type,
     )
 
@@ -70,36 +72,26 @@ def load_all_datasets() -> list[DatasetBundle]:
 
     Returns
     -------
-    
     list[DatasetBundle]
         One bundle per dataset, ready for meta-feature extraction.
     """
-
-    
-
-def load_all_datasets() -> list[DatasetBundle]:
-    """
-    Load our full initial collection of benchmark datasets.
-    """
-
     dataset_specs = [
-        (load_iris, "iris", "classification"),
-        (load_wine, "wine", "classification"),
-        (load_breast_cancer, "breast_cancer", "classification"),
-        (load_diabetes, "diabetes", "regression"),
-        (fetch_california_housing, "california_housing", "regression"),
+        (load_iris, "iris", "classification", "target"),
+        (load_wine, "wine", "classification", "target"),
+        (load_breast_cancer, "breast_cancer", "classification", "target"),
+        (load_diabetes, "diabetes", "regression", "target"),
+        (fetch_california_housing, "california_housing", "regression", "MedHouseVal"),
     ]
 
     bundles = []
-
-    for loader_function, name, task_type in dataset_specs:
-        print(f"Loading {name}...")
-        bundle = _load_sklearn_dataset(loader_function, name, task_type)
-        print(f"Finished {name}")
+    for loader_function, name, task_type, target_column in dataset_specs:
+        bundle = _load_sklearn_dataset(loader_function, name, task_type, target_column)
         bundles.append(bundle)
 
     return bundles
-    
+
+
+
     
 
 if __name__ == "__main__":
@@ -108,4 +100,4 @@ if __name__ == "__main__":
     print(f"Loaded {len(bundles)} datasets\n")
 
     for bundle in bundles:
-        print(bundle.name)
+        print(bundle.name) 
